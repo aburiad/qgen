@@ -1,0 +1,217 @@
+/* Paginated Page Preview Styles */
+
+:root {
+  --page-w: 210mm;
+  --page-h: 297mm;
+  --pad: 18mm;
+  --content-h: 261mm;
+}
+
+.paginated-container {
+  background: #f2f2f2;
+  padding: 16px 0;
+}
+
+.toolbar {
+  padding: 16px;
+  text-align: center;
+  background: white;
+  margin: 0 16px 16px 16px;
+  border-radius: 4px;
+}
+
+.toolbar .btn {
+  padding: 12px 24px;
+  font-size: 16px;
+  cursor: pointer;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: background 0.2s;
+  font-family: 'Noto Sans Bengali', sans-serif;
+}
+
+.toolbar .btn:hover {
+  background: #1d4ed8;
+}
+
+/* .toolbar.no-print is visible in preview, hidden in print */
+
+/* A4 Pages Container */
+.pages-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 0 16px 32px 16px;
+}
+
+/* A4 Page */
+.page {
+  width: var(--page-w);
+  height: var(--page-h);
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #ddd;
+  box-sizing: border-box;
+  padding: var(--pad);
+  position: relative;
+  overflow: hidden;
+}
+
+.page .page-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.page-header {
+  flex-shrink: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.page-header h1,
+.page-header h2 {
+  margin: 0;
+  text-align: center;
+  font-family: 'Noto Sans Bengali', sans-serif;
+}
+
+.page-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.page-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.page-header .meta {
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+  font-family: 'Noto Sans Bengali', sans-serif;
+}
+
+.page-header hr {
+  margin: 12px 0;
+  border: none;
+  border-top: 1px solid #ddd;
+}
+
+.page-content {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  font-family: 'Noto Sans Bengali', sans-serif;
+}
+
+/* Question Styling */
+.question {
+  margin: 0 0 14px 0;
+  line-height: 1.7;
+  page-break-inside: avoid;
+  font-size: 14px;
+}
+
+.question strong {
+  display: inline-block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.question ol.parts {
+  margin: 6px 0 0 0;
+  padding-left: 20px;
+  list-style-type: lower-alpha;
+}
+
+.question ol.parts li {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+/* Print Styles */
+@page {
+  size: A4;
+  margin: 5mm;
+}
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body {
+    background: white;
+    margin: 0;
+    padding: 0;
+  }
+
+  .paginated-container {
+    background: white;
+    padding: 0;
+  }
+
+  .toolbar,
+  .no-print {
+    display: none !important;
+  }
+
+  .pages-container {
+    gap: 0;
+    padding: 0;
+    margin: 0;
+  }
+
+  .page {
+    width: 100%;
+    height: auto;
+    min-height: var(--page-h);
+    border: none;
+    box-shadow: none;
+    margin: 0;
+    padding: var(--pad);
+    page-break-after: always;
+    overflow: visible;
+  }
+
+  .page .page-inner {
+    height: auto;
+    overflow: visible;
+  }
+
+  .page .page-content {
+    overflow: visible;
+    height: auto;
+    min-height: auto;
+  }
+
+  .page:last-child {
+    page-break-after: auto;
+  }
+
+  .question {
+    page-break-inside: avoid;
+  }
+}
+
+/* Responsive for smaller screens */
+@media (max-width: 768px) {
+  .page {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    transform: scale(0.7);
+    transform-origin: top center;
+  }
+}

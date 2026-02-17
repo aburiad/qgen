@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Class 8 Bangla Srijonshil - Print to PDF (A4 Paginated)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --page-w: 210mm;
+      --page-h: 297mm;
+      --pad: 18mm;
+      /* Content area height for JS: 297 - 18*2 = 261mm → ~987px at 96dpi */
+      --content-h: 261mm;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Noto Sans Bengali", sans-serif;
+      background: #f2f2f2;
+    }
+
+    .toolbar {
+      padding: 16px;
+      text-align: center;
+    }
+    .toolbar.no-print { }
+    .btn {
+      padding: 10px 18px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    /* A4 page: fixed height, content flows into next page via JS */
+    .page {
+      width: var(--page-w);
+      min-height: var(--page-h);
+      height: var(--page-h);
+      margin: 16px auto;
+      background: #fff;
+      padding: var(--pad);
+      border: 1px solid #ddd;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .page .page-inner {
+      overflow: hidden;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page-header {
+      flex-shrink: 0;
+    }
+    .page-header h1, .page-header h2 { margin: 0; text-align: center; }
+    .page-header .meta { text-align: center; margin-top: 8px; }
+    .page-header hr { margin: 16px 0; }
+
+    .page-content {
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .question {
+      margin: 0 0 14px 0;
+      line-height: 1.7;
+      break-inside: avoid;
+    }
+    .question strong { display: inline-block; margin-bottom: 4px; }
+    .parts { margin: 6px 0 0 0; padding-left: 18px; }
+    .parts li { margin: 3px 0; }
+
+    /* Print */
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      body { background: white; }
+      .no-print { display: none !important; }
+      .page {
+        border: none;
+        margin: 0 auto;
+        width: var(--page-w);
+        height: auto !important;
+        min-height: var(--page-h);
+        padding: var(--pad);
+        overflow: visible;
+        page-break-after: always;
+        box-shadow: none;
+      }
+      .page .page-inner { height: auto; overflow: visible; }
+      .page .page-content { overflow: visible; }
+      .page:last-child { page-break-after: auto; }
+      .question { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <button class="btn" onclick="window.print()">PDF ডাউনলোড করুন</button>
+    <div style="margin-top:8px; font-size:14px; color:#444;">
+      প্রিন্ট ডায়ালগে <b>Destination: Save as PDF</b>, <b>Paper: A4</b>, <b>Scale: 100%</b> রাখো
+    </div>
+  </div>
+
+  <div id="pages-container"></div>
+
+  <script>
+    (function() {
+      const PADDING_MM = 18;
+      const PAGE_HEIGHT_MM = 297;
+      const CONTENT_HEIGHT_MM = PAGE_HEIGHT_MM - PADDING_MM * 2;
+      const MM_TO_PX = 96 / 25.4;
+      const MAX_CONTENT_HEIGHT_PX = CONTENT_HEIGHT_MM * MM_TO_PX;
+
+      const questions = [
+        { num: 1, stem: 'নিচের অনুচ্ছেদটি পড়ো এবং প্রশ্নগুলোর উত্তর দাও।<br>"পরিশ্রম মানুষকে উন্নতির পথে এগিয়ে নেয়।"', parts: ['পরিশ্রম কাকে বলে?', 'পরিশ্রমী ব্যক্তি কেন সফল হয়?', 'পরিশ্রমের গুরুত্ব ব্যাখ্যা কর।', 'তোমার জীবনে পরিশ্রমের ভূমিকা বিশ্লেষণ কর।'] },
+        { num: 2, stem: 'কবিতাংশটি পড়ো— "কথায় না বড় হয়ে কাজে বড় হবে।"', parts: ['কবিতাংশের মূল ভাব কী?', '\'কাজে বড় হওয়া\' বলতে কী বোঝানো হয়েছে?', 'কবির উদ্দেশ্য ব্যাখ্যা কর।', 'বর্তমান সমাজে এই শিক্ষার গুরুত্ব বিশ্লেষণ কর।'] },
+        { num: 3, stem: '"পরিবেশ দূষণ মানবজাতির জন্য হুমকি।"', parts: ['পরিবেশ দূষণ কী?', 'পরিবেশ দূষণের দুটি কারণ লেখ।', 'পরিবেশ দূষণের প্রভাব ব্যাখ্যা কর।', 'পরিবেশ রক্ষায় তোমার করণীয় বিশ্লেষণ কর।'] },
+        { num: 4, stem: '"শিক্ষাই জাতির মেরুদণ্ড।"', parts: ['মেরুদণ্ড বলতে কী বোঝায়?', 'শিক্ষা কেন জাতির ভিত্তি?', 'শিক্ষার প্রয়োজনীয়তা ব্যাখ্যা কর।', 'আধুনিক যুগে শিক্ষার ভূমিকা বিশ্লেষণ কর।'] },
+        { num: 5, stem: '"ডিজিটাল বাংলাদেশ আমাদের স্বপ্ন।"', parts: ['ডিজিটাল বাংলাদেশ বলতে কী বোঝায়?', 'তথ্যপ্রযুক্তির দুটি উপকারিতা লেখ।', 'দেশের উন্নয়নে প্রযুক্তির ভূমিকা ব্যাখ্যা কর।', 'ডিজিটাল বাংলাদেশ গঠনে শিক্ষার্থীদের ভূমিকা বিশ্লেষণ কর।'] },
+        { num: 6, stem: '"সততাই সর্বোত্তম নীতি।"', parts: ['সততা কী?', 'অসততার ক্ষতি কী?', 'সততার গুরুত্ব ব্যাখ্যা কর।', 'সমাজে সততার প্রয়োজনীয়তা বিশ্লেষণ কর।'] },
+        { num: 7, stem: '"সময়ের কাজ সময়ে করাই বুদ্ধিমানের পরিচয়।"', parts: ['সময়ানুবর্তিতা কী?', 'সময়ানুবর্তী ব্যক্তির গুণাবলি লেখ।', 'সময়ানুবর্তিতার উপকারিতা ব্যাখ্যা কর।', 'শিক্ষার্থীর জীবনে সময়ানুবর্তিতার গুরুত্ব বিশ্লেষণ কর।'] },
+        { num: 8, stem: '"স্বাস্থ্যই সম্পদ।"', parts: ['সুস্বাস্থ্য কাকে বলে?', 'অসুস্থতার দুটি কারণ লেখ।', 'স্বাস্থ্য রক্ষার উপায় ব্যাখ্যা কর।', 'সুস্থ জাতি গঠনে স্বাস্থ্য সচেতনতার ভূমিকা বিশ্লেষণ কর।'] },
+        { num: 9, stem: '"দেশপ্রেম মানুষের মহৎ গুণ।"', parts: ['দেশপ্রেম কী?', 'দেশপ্রেমিকের দুটি গুণ লেখ।', 'দেশপ্রেমের গুরুত্ব ব্যাখ্যা কর।', 'তরুণ সমাজে দেশপ্রেম জাগ্রত করার উপায় বিশ্লেষণ কর।'] },
+        { num: 10, stem: '"অধ্যবসায় সাফল্যের চাবিকাঠি।"', parts: ['অধ্যবসায় কী?', 'অধ্যবসায়ী ব্যক্তির বৈশিষ্ট্য লেখ।', 'সাফল্যে অধ্যবসায়ের ভূমিকা ব্যাখ্যা কর।', 'তোমার ভবিষ্যৎ লক্ষ্য অর্জনে অধ্যবসায়ের প্রয়োজনীয়তা বিশ্লেষণ কর।'] },
+      ];
+
+      function createQuestionEl(q) {
+        const div = document.createElement('div');
+        div.className = 'question';
+        const partsList = q.parts.map(p => '<li>' + p + '</li>').join('');
+        div.innerHTML = '<strong>প্রশ্ন ' + q.num + ':</strong> ' + q.stem + '<ol class="parts" type="a">' + partsList + '</ol>';
+        return div;
+      }
+
+      function createPage(hasHeader) {
+        const section = document.createElement('section');
+        section.className = 'page';
+        const inner = document.createElement('div');
+        inner.className = 'page-inner';
+        if (hasHeader) {
+          const header = document.createElement('div');
+          header.className = 'page-header';
+          header.innerHTML = '<h1>শ্রেণি: অষ্টম</h1><h2>বাংলা প্রথম পত্র</h2><div class="meta">সময়: ৩ ঘণ্টা | পূর্ণমান: ১০০</div><hr>';
+          inner.appendChild(header);
+        }
+        const content = document.createElement('div');
+        content.className = 'page-content';
+        inner.appendChild(content);
+        section.appendChild(inner);
+        return { section, content };
+      }
+
+      function distributeQuestions() {
+        const container = document.getElementById('pages-container');
+        container.innerHTML = '';
+
+        let current = createPage(true);
+        container.appendChild(current.section);
+        let currentContent = current.content;
+        let isFirstPage = true;
+
+        for (let i = 0; i < questions.length; i++) {
+          const qEl = createQuestionEl(questions[i]);
+          currentContent.appendChild(qEl);
+
+          while (currentContent.scrollHeight > MAX_CONTENT_HEIGHT_PX && currentContent.children.length > 1) {
+            const last = currentContent.lastElementChild;
+            last.remove();
+            const next = createPage(false);
+            container.appendChild(next.section);
+            next.content.appendChild(last);
+            currentContent = next.content;
+            isFirstPage = false;
+          }
+        }
+      }
+
+      distributeQuestions();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+/* Print Styles for Question Papers */
+
+@media print {
+  /* Page setup for A4 */
+  @page {
+    size: A4;
+    margin: 5mm;
+  }
+
+  /* Ensure colors print */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  /* Single document container approach - no need to hide/show */
+  /* All content is in one container, browser paginates automatically */
+
+  /* Single document container - browser handles pagination automatically */
+  #printable-content,
+  .printable-document {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Prevent page breaks inside important elements */
+  .question-item,
+  .board-question,
+  .creative-question,
+  [data-question-id] {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    -moz-column-break-inside: avoid !important;
+  }
+
+  /* Prevent page breaks after headers */
+  .question-header,
+  .board-question-header {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Keep sub-questions together */
+  .sub-question,
+  .board-subquestion {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Allow page breaks between questions */
+  .question-item {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  /* Remove shadows and effects for print */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Ensure borders print correctly */
+  table {
+    border-collapse: collapse;
+  }
+
+  table,
+  th,
+  td {
+    border: 1px solid #000 !important;
+  }
+
+  /* Remove backgrounds except for table headers */
+  .bg-slate-50,
+  .bg-slate-100,
+  .bg-gray-50 {
+    background: transparent !important;
+  }
+
+  th,
+  .board-table-header {
+    background: #f1f5f9 !important;
+  }
+
+  /* Ensure proper spacing */
+  .question-item {
+    margin-bottom: 1.5em;
+  }
+
+  /* Remove rounded corners for print */
+  * {
+    border-radius: 0 !important;
+  }
+
+  /* Ensure formula rendering */
+  .katex,
+  .katex * {
+    visibility: visible !important;
+  }
+
+  /* Hide scroll indicators */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}
