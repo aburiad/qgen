@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: qgen-frontend
+    env: node
+    plan: free
+    repo: https://github.com/your-username/your-repository
+    branch: main
+    buildCommand: npm install && npm run build
+    startCommand: npm install -g serve && serve -s dist
+    healthCheckPath: /
+    envVars:
+      - key: VITE_PDF_API_URL
+        value: https://qgen-pdf-server.onrender.com
+        scope: build
+
+  - type: web
+    name: qgen-pdf-server
+    env: node
+    plan: free
+    repo: https://github.com/your-username/your-repository
+    branch: main
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/pdf/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5001
+      - key: FRONTEND_URL
+        value: https://qgen-frontend.onrender.com

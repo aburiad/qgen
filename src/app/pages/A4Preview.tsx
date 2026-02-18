@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { BoardStyleLayout } from '../components/BoardStyleLayout';
 import { PDFDownloadButton } from '../components/PDFDownloadButton';
+import { GeneratePdfButton } from '../components/GeneratePdfButton';
 import { QuestionRenderer } from '../components/QuestionRenderer';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -43,6 +44,7 @@ export default function A4Preview() {
   const [questionPadding, setQuestionPadding] = useState(0);
   const [columnGap, setColumnGap] = useState(8);
   const [printMargin, setPrintMargin] = useState(20);
+  const [htmlContent, setHtmlContent] = useState('');
 
   // Removed JavaScript pagination - using pure CSS pagination instead
 
@@ -112,6 +114,17 @@ export default function A4Preview() {
       localStorage.setItem(`pageSettings_${paperId}`, JSON.stringify(settings));
     }
   }, [paperId, paper, pageWidth, pageHeight, pageMargin, baseFontSize, questionFontSize, questionMargin, questionPadding, columnGap, printMargin, useBoardStyle]);
+
+  // Capture HTML content from preview ref for PDF generation
+  useEffect(() => {
+    if (previewRef.current) {
+      const timer = setTimeout(() => {
+        const htmlContent = previewRef.current?.innerHTML || '';
+        setHtmlContent(htmlContent);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [paper, pageWidth, pageHeight, pageMargin, baseFontSize, questionFontSize, questionMargin, questionPadding, columnGap, useBoardStyle]);
 
   // Removed JavaScript pagination logic - browser handles pagination via CSS
 
@@ -240,11 +253,18 @@ export default function A4Preview() {
                 </SheetContent>
               </Sheet>
 
-              <PDFDownloadButton 
-                previewRef={previewRef} 
-                printMargin={printMargin}
-                onMarginChange={setPrintMargin}
-              />
+              <div className="flex gap-2 flex-wrap">
+                <PDFDownloadButton 
+                  previewRef={previewRef} 
+                  printMargin={printMargin}
+                  onMarginChange={setPrintMargin}
+                />
+                <GeneratePdfButton 
+                  htmlContent={htmlContent} 
+                  filename={`${paper.title || 'question_paper'}.pdf`}
+                  label="PDF ডাউনলোড করুন"
+                />
+              </div>
             </div>
           </div>
         </div>
