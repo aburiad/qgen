@@ -1,8 +1,6 @@
-const puppeteer = require('puppeteer');
 import puppeteer from 'puppeteer';
-
-export const getPuppeteerConfig = () => {
-  const config = {
+const getPuppeteerConfig = () => {
+  return {
     headless: true,
     args: [
       '--no-sandbox',
@@ -12,13 +10,6 @@ export const getPuppeteerConfig = () => {
       '--single-process'
     ]
   };
-
-  // If PUPPETEER_EXECUTABLE_PATH is set, use custom Chrome path
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    config.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-  }
-
-  return config;
 };
 
 export const generatePDFFromHTML = async (htmlContent, pdfOptions = {}) => {
@@ -28,18 +19,28 @@ export const generatePDFFromHTML = async (htmlContent, pdfOptions = {}) => {
     browser = await puppeteer.launch(config);
     const page = await browser.newPage();
     
-    // Set viewport for print-friendly rendering
     await page.setViewport({
       width: 1200,
       height: 1600
     });
 
-    // Load the HTML content
+    // Set content with longer wait for fonts and CSS to load
     await page.setContent(htmlContent, {
-      waitUntil: 'networkidle0'
+      waitUntil: ['networkidle0', 'domcontentloaded']
     });
 
-    // Default PDF options
+    // Extra delay to ensure web fonts are loaded
+    await page.waitForTimeout(1000);
+    
+    // Inject additional font loading check
+    await page.evaluateOnNewDocument(() => {
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+          console.log('Fonts loaded');
+        });
+      }
+    });
+
     const defaultPdfOptions = {
       format: 'A4',
       margin: {
@@ -50,13 +51,11 @@ export const generatePDFFromHTML = async (htmlContent, pdfOptions = {}) => {
       },
       printBackground: true,
       scale: 1,
-      preferCSSPageSize: true
+      preferCSSPageSize: true,
+      displayHeaderFooter: false
     };
 
-    // Merge with provided options
     const finalOptions = { ...defaultPdfOptions, ...pdfOptions };
-
-    // Generate PDF
     const pdfBuffer = await page.pdf(finalOptions);
 
     await browser.close();

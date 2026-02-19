@@ -40,7 +40,7 @@ export function BoardStyleLayout({
     <div className="board-exam-paper">
       {!hideHeader && (
       <div className="board-header" data-measure="header">
-        <div className="text-center mb-4 pb-2 border-b border-black">
+        <div className="text-center mb-4 pb-2 border-b ">
               {paper.setup.schoolName && (
                 <h1 className="text-xl font-bold mb-1" style={{ fontFamily: "'Noto Serif Bengali', serif" }}>
                   {paper.setup.schoolName}

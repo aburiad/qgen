@@ -289,3 +289,10 @@
   }
 
 }
+
+.katex-display{
+  text-align: unset !important;
+}
+.katex-display>.katex{
+  text-align: unset !important;
+}

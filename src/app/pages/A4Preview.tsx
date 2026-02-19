@@ -44,7 +44,6 @@ export default function A4Preview() {
   const [questionPadding, setQuestionPadding] = useState(0);
   const [columnGap, setColumnGap] = useState(8);
   const [printMargin, setPrintMargin] = useState(20);
-  const [htmlContent, setHtmlContent] = useState('');
 
   // Removed JavaScript pagination - using pure CSS pagination instead
 
@@ -115,16 +114,10 @@ export default function A4Preview() {
     }
   }, [paperId, paper, pageWidth, pageHeight, pageMargin, baseFontSize, questionFontSize, questionMargin, questionPadding, columnGap, printMargin, useBoardStyle]);
 
-  // Capture HTML content from preview ref for PDF generation
-  useEffect(() => {
-    if (previewRef.current) {
-      const timer = setTimeout(() => {
-        const htmlContent = previewRef.current?.innerHTML || '';
-        setHtmlContent(htmlContent);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [paper, pageWidth, pageHeight, pageMargin, baseFontSize, questionFontSize, questionMargin, questionPadding, columnGap, useBoardStyle]);
+  // Capture HTML content from preview ref for PDF generation - on demand
+  const getHtmlContent = () => {
+    return previewRef.current?.innerHTML || '';
+  };
 
   // Removed JavaScript pagination logic - browser handles pagination via CSS
 
@@ -260,7 +253,7 @@ export default function A4Preview() {
                   onMarginChange={setPrintMargin}
                 />
                 <GeneratePdfButton 
-                  htmlContent={htmlContent} 
+                  htmlContent={getHtmlContent} 
                   filename={`${paper.title || 'question_paper'}.pdf`}
                   label="PDF ডাউনলোড করুন"
                 />
