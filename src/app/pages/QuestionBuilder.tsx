@@ -66,6 +66,7 @@ export default function QuestionBuilder() {
       blocks: [],
       marks: 5,
       optional: false,
+      options: ['', '', '', ''], // Initialize empty options for MCQ
     };
     setSelectedQuestion(newQuestion);
     setEditingIndex(-1);
@@ -84,6 +85,19 @@ export default function QuestionBuilder() {
     if (selectedQuestion.blocks.length === 0) {
       toast.error('ন্তত একটি ব্লক যোগ করুন');
       return;
+    }
+
+    // MCQ validation
+    if (selectedQuestion.type === 'mcq') {
+      const options = selectedQuestion.options || ['', '', '', ''];
+      if (options.some(opt => !opt.trim())) {
+        toast.error('সকল ৪টি বিকল্প পূরণ করুন');
+        return;
+      }
+      if (selectedQuestion.correctAnswer === undefined || selectedQuestion.correctAnswer === null) {
+        toast.error('সঠিক উত্তর নির্বাচন করুন');
+        return;
+      }
     }
 
     let updatedQuestions = [...paper.questions];
@@ -155,6 +169,9 @@ export default function QuestionBuilder() {
         ...subQ,
         id: generateId(),
       })),
+      options: originalQuestion.options ? [...originalQuestion.options] : undefined,
+      correctAnswer: originalQuestion.correctAnswer,
+      mcqFormat: originalQuestion.mcqFormat,
     };
 
     const updatedQuestions = [...paper.questions, duplicatedQuestion].map((q, idx) => ({
@@ -380,7 +397,18 @@ export default function QuestionBuilder() {
                         <Select
                           value={selectedQuestion.type}
                           onValueChange={(value) =>
-                            setSelectedQuestion({ ...selectedQuestion, type: value as QuestionType })
+                            setSelectedQuestion(prev => {
+                              const nextType = value as QuestionType;
+                              if (nextType === 'mcq') {
+                                return {
+                                  ...prev,
+                                  type: nextType,
+                                  options: prev.options || ['', '', '', ''],
+                                  mcqFormat: prev.mcqFormat || 'vertical',
+                                } as any;
+                              }
+                              return { ...prev, type: nextType } as any;
+                            })
                           }
                         >
                           <SelectTrigger className="w-full h-12 md:h-10 font-['Noto_Sans_Bengali']">
@@ -398,22 +426,24 @@ export default function QuestionBuilder() {
 
                       {/* Marks and Optional */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="font-['Noto_Sans_Bengali']">নম্বর</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            max="50"
-                            value={selectedQuestion.marks}
-                            onChange={(e) =>
-                              setSelectedQuestion({
-                                ...selectedQuestion,
-                                marks: parseInt(e.target.value) || 0,
-                              })
-                            }
-                            className="w-full h-12 md:h-10 font-['Noto_Sans_Bengali']"
-                          />
-                        </div>
+                        {selectedQuestion.type !== 'mcq' && (
+                          <div className="space-y-2">
+                            <Label className="font-['Noto_Sans_Bengali']">নম্বর</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="50"
+                              value={selectedQuestion.marks}
+                              onChange={(e) =>
+                                setSelectedQuestion({
+                                  ...selectedQuestion,
+                                  marks: parseInt(e.target.value) || 0,
+                                })
+                              }
+                              className="w-full h-12 md:h-10 font-['Noto_Sans_Bengali']"
+                            />
+                          </div>
+                        )}
 
                         <div className="space-y-2">
                           <Label className="font-['Noto_Sans_Bengali']">ঐচ্ছিক প্রশ্ন</Label>
@@ -430,6 +460,73 @@ export default function QuestionBuilder() {
                           </div>
                         </div>
                       </div>
+
+                      {/* MCQ Options */}
+                      {selectedQuestion.type === 'mcq' && (
+                        <div className="space-y-4 p-4 bg-purple-50 rounded-xl border border-purple-200">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-medium text-sm font-['Noto_Sans_Bengali']">বহুনির্বাচনী বিকল্প</h3>
+                            <div className="w-48">
+                              <Label className="mb-1 text-xs">ফরম্যাট</Label>
+                              <Select
+                                value={selectedQuestion.mcqFormat || 'vertical'}
+                                onValueChange={(val) => setSelectedQuestion({ ...selectedQuestion, mcqFormat: val as any })}
+                              >
+                                <SelectTrigger className="w-full h-9">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="vertical">উপর-নিচে (Vertical)</SelectItem>
+                                  <SelectItem value="two-column">দুই কলাম (Two-column)</SelectItem>
+                                  <SelectItem value="answer-key">উত্তর চাবি (Answer Key)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          
+                          {['ক', 'খ', 'গ', 'ঘ'].map((label, idx) => (
+                            <div key={idx} className="p-3 bg-white rounded-xl border border-purple-200">
+                              <div className="flex items-start justify-between mb-3 gap-3">
+                                <div className="flex items-center gap-3 flex-1">
+                                  <input
+                                    type="radio"
+                                    id={`correct-${idx}`}
+                                    name="correctAnswer"
+                                    checked={selectedQuestion.correctAnswer === idx}
+                                    onChange={() =>
+                                      setSelectedQuestion({
+                                        ...selectedQuestion,
+                                        correctAnswer: idx,
+                                      })
+                                    }
+                                    className="w-4 h-4 cursor-pointer accent-green-600"
+                                  />
+                                  <label htmlFor={`correct-${idx}`} className="flex items-center gap-2 cursor-pointer flex-1">
+                                    <Badge className="font-['Noto_Sans_Bengali']">{label})</Badge>
+                                    <span className="text-xs text-slate-500 font-['Noto_Sans_Bengali']">
+                                      {selectedQuestion.correctAnswer === idx ? '✓ সঠিক উত্তর' : 'সঠিক করতে ক্লিক করুন'}
+                                    </span>
+                                  </label>
+                                </div>
+                              </div>
+                              
+                              <Input
+                                placeholder={`বিকল্প ${label}ের টেক্সট`}
+                                value={selectedQuestion.options?.[idx] || ''}
+                                onChange={(e) => {
+                                  const newOptions = [...(selectedQuestion.options || ['', '', '', ''])];
+                                  newOptions[idx] = e.target.value;
+                                  setSelectedQuestion({
+                                    ...selectedQuestion,
+                                    options: newOptions,
+                                  });
+                                }}
+                                className="w-full h-11 md:h-9 font-['Noto_Sans_Bengali']"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Creative Question Sub-parts */}
                       {selectedQuestion.type === 'creative' && (

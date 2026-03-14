@@ -51,6 +51,7 @@ export interface Question {
   subQuestions?: SubQuestion[]; // For creative questions
   options?: string[]; // For MCQ
   correctAnswer?: string | number; // For MCQ, matching, etc.
+  mcqFormat?: 'vertical' | 'two-column' | 'answer-key'; // Per-question MCQ layout
 }
 
 export type ExamType = 'class-test' | 'half-yearly' | 'annual' | 'model-test';

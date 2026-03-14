@@ -11,6 +11,7 @@ interface BoardStyleLayoutProps {
   columnGap?: number;
   /** When true, hide header (for 2nd+ page in paginated preview) */
   hideHeader?: boolean;
+  mcqFormat?: 'vertical' | 'two-column' | 'answer-key';
 }
 
 export function BoardStyleLayout({ 
@@ -20,7 +21,8 @@ export function BoardStyleLayout({
   questionMargin,
   questionPadding,
   columnGap = 8,
-  hideHeader = false 
+  hideHeader = false,
+  mcqFormat = 'vertical',
 }: BoardStyleLayoutProps) {
   // Get column count from layout (default to 2 if not specified)
   const columnCount = parseInt(paper.setup.layout || '2');
@@ -70,7 +72,7 @@ export function BoardStyleLayout({
       <div className="board-columns" style={{ gap: `${columnGap}px` }}>
         {questionColumns.map((column, idx) => (
           <div key={idx} className="board-column">
-            {column.map((question) => (
+                {column.map((question) => (
               <div 
                 key={question.id} 
                 className="question-item" 
@@ -81,7 +83,7 @@ export function BoardStyleLayout({
                   padding: questionPadding ? `${questionPadding}px` : undefined,
                 }}
               >
-                <BoardQuestion question={question} fontSize={questionFontSize} />
+                <BoardQuestion question={question} fontSize={questionFontSize} mcqFormat={mcqFormat} />
               </div>
             ))}
           </div>
@@ -239,16 +241,30 @@ export function BoardStyleLayout({
   );
 }
 
-function BoardQuestion({ question, fontSize }: { question: Question; fontSize?: number }) {
+function BoardQuestion({ question, fontSize, mcqFormat }: { question: Question; fontSize?: number; mcqFormat?: 'vertical' | 'two-column' | 'answer-key' }) {
+  return (
+    <BoardQuestionInner question={question} fontSize={fontSize} mcqFormat={mcqFormat} />
+  );
+}
+
+function BoardQuestionInner({ question, fontSize, mcqFormat }: { question: Question; fontSize?: number; mcqFormat?: 'vertical' | 'two-column' | 'answer-key' }) {
   const isCreative = question.type === 'creative';
+
+  // Helper labels
+  const mcqLabels = ['ক', 'খ', 'গ', 'ঘ'];
+  const effectiveFormat = question.mcqFormat || mcqFormat;
 
   return (
     <div className={`board-question ${isCreative ? 'creative-question' : ''}`} style={{ fontSize: fontSize ? `${fontSize}px` : undefined }}>
-      {/* Non-creative: Question Number and Marks at top */}
+      {/* Non-creative: Question Number and Content side-by-side */}
       {!isCreative && (
-        <div className="board-question-header">
-          <span className="board-question-number">{question.number}।</span>
-          <span className="board-question-marks">{question.marks}</span>
+        <div className="board-question-row" style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+          <div className="board-question-number" style={{ flex: '0 0 32px' }}>{question.number}।</div>
+          <div className="board-question-content" style={{ flex: 1 }}>
+            {question.blocks.map((block) => (
+              <BoardBlock key={block.id} block={block} fontSize={fontSize} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -264,12 +280,30 @@ function BoardQuestion({ question, fontSize }: { question: Question; fontSize?: 
         </div>
       )}
 
-      {/* Non-creative question content */}
-      {!isCreative && (
-        <div className="board-question-content">
-          {question.blocks.map((block) => (
-            <BoardBlock key={block.id} block={block} fontSize={fontSize} />
-          ))}
+      {/* MCQ rendering */}
+      {question.type === 'mcq' && question.options && (
+        <div className="board-mcq mt-2">
+          {effectiveFormat === 'answer-key' ? (
+            <div className="text-sm text-green-700">✓ উত্তর: {mcqLabels[question.correctAnswer as number]}</div>
+          ) : effectiveFormat === 'two-column' ? (
+            <div className="grid grid-cols-2 gap-2">
+              {question.options.map((opt, idx) => (
+                <div key={idx} className="flex gap-2 items-start">
+                  <span className="font-medium">{mcqLabels[idx]})</span>
+                  <span>{opt}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {question.options.map((opt, idx) => (
+                <div key={idx} className="flex gap-2 items-start">
+                  <span className="font-medium">{mcqLabels[idx]})</span>
+                  <span>{opt}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -284,7 +318,7 @@ function BoardQuestion({ question, fontSize }: { question: Question; fontSize?: 
                   <BoardBlock key={block.id} block={block} fontSize={fontSize} />
                 ))}
               </div>
-              <span className="board-subquestion-marks">{subQ.marks}</span>
+              {/* marks hidden in preview */}
             </div>
           ))}
         </div>
@@ -292,7 +326,6 @@ function BoardQuestion({ question, fontSize }: { question: Question; fontSize?: 
     </div>
   );
 }
-
 function BoardBlock({ block, fontSize }: { block: Block; fontSize?: number }) {
   switch (block.type) {
     case 'text':

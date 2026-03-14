@@ -44,6 +44,7 @@ export default function A4Preview() {
   const [questionPadding, setQuestionPadding] = useState(0);
   const [columnGap, setColumnGap] = useState(8);
   const [printMargin, setPrintMargin] = useState(20);
+    const [mcqFormat, setMcqFormat] = useState<'vertical' | 'two-column' | 'answer-key'>('vertical');
 
   // Removed JavaScript pagination - using pure CSS pagination instead
 
@@ -89,6 +90,7 @@ export default function A4Preview() {
           setColumnGap(Math.max(0, Math.min(40, settings.columnGap ?? 8)));
           setPrintMargin(Math.max(0, Math.min(40, settings.printMargin ?? 20)));
           setUseBoardStyle(settings.useBoardStyle ?? true);
+            setMcqFormat(settings.mcqFormat ?? 'vertical');
         } catch (e) {
           console.error('Error loading page settings:', e);
         }
@@ -109,10 +111,11 @@ export default function A4Preview() {
         columnGap,
         printMargin,
         useBoardStyle,
+          mcqFormat,
       };
       localStorage.setItem(`pageSettings_${paperId}`, JSON.stringify(settings));
     }
-  }, [paperId, paper, pageWidth, pageHeight, pageMargin, baseFontSize, questionFontSize, questionMargin, questionPadding, columnGap, printMargin, useBoardStyle]);
+    }, [paperId, paper, pageWidth, pageHeight, pageMargin, baseFontSize, questionFontSize, questionMargin, questionPadding, columnGap, printMargin, useBoardStyle, mcqFormat]);
 
   // Capture HTML content from preview ref for PDF generation - on demand
   const getHtmlContent = () => {
@@ -233,6 +236,37 @@ export default function A4Preview() {
 
                       {/* Presets */}
                       <div className="space-y-2 pt-4 border-t">
+                          <h3 className="font-semibold text-sm">MCQ ফরম্যাট</h3>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Button 
+                            variant={mcqFormat === 'vertical' ? 'default' : 'outline'} 
+                            size="sm" 
+                            onClick={() => setMcqFormat('vertical')}
+                            className="text-xs font-['Noto_Sans_Bengali']"
+                          >
+                            উপরে-নিচে
+                          </Button>
+                          <Button 
+                            variant={mcqFormat === 'two-column' ? 'default' : 'outline'} 
+                            size="sm" 
+                            onClick={() => setMcqFormat('two-column')}
+                            className="text-xs font-['Noto_Sans_Bengali']"
+                          >
+                            দুই কলাম
+                          </Button>
+                          <Button 
+                            variant={mcqFormat === 'answer-key' ? 'default' : 'outline'} 
+                            size="sm" 
+                            onClick={() => setMcqFormat('answer-key')}
+                            className="text-xs font-['Noto_Sans_Bengali']"
+                          >
+                            উত্তর চাবি
+                          </Button>
+                        </div>
+
+                        {/* Presets */}
+                        <div className="space-y-2 pt-4 border-t">
                         <Label>প্রিসেট</Label>
                         <div className="grid grid-cols-2 gap-2">
                           <Button variant="outline" size="sm" onClick={() => { setPageWidth(210); setPageHeight(297); setPageMargin(20); setBaseFontSize(16); }}>A4</Button>
@@ -293,6 +327,7 @@ export default function A4Preview() {
                 questionMargin={questionMargin}
                 questionPadding={questionPadding}
                 columnGap={columnGap}
+                mcqFormat={mcqFormat}
               />
             ) : (
               <>
@@ -313,6 +348,7 @@ export default function A4Preview() {
                         fontSize={questionFontSize}
                         margin={questionMargin}
                         padding={questionPadding}
+                          mcqFormat={mcqFormat}
                       />
                     </div>
                   ))}

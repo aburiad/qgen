@@ -7,9 +7,10 @@ interface QuestionRendererProps {
   fontSize?: number;
   margin?: number;
   padding?: number;
+  mcqFormat?: 'vertical' | 'two-column' | 'answer-key';
 }
 
-export function QuestionRenderer({ question, showAnswerSpace = true, fontSize, margin, padding }: QuestionRendererProps) {
+export function QuestionRenderer({ question, showAnswerSpace = true, fontSize, margin, padding, mcqFormat = 'vertical' }: QuestionRendererProps) {
   const styleVar = {
     '--qf-font-size': fontSize ? `${fontSize}px` : undefined,
     '--qf-margin': margin ? `${margin}px` : undefined,
@@ -26,21 +27,29 @@ export function QuestionRenderer({ question, showAnswerSpace = true, fontSize, m
         ...styleVar,
       }}
     >
-      {/* Question Number and Type */}
-      <div className="question-header flex items-baseline gap-2">
-        <span className="font-semibold" style={{ fontSize: fontSize ? `${fontSize * 1.1}px` : undefined }}>{question.number}।</span>
-        {question.optional && (
-          <span className="text-xs text-slate-500" style={{ fontSize: fontSize ? `${fontSize * 0.65}px` : undefined }}>(ঐচ্ছিক)</span>
-        )}
-        <span className="ml-auto text-sm text-slate-600" style={{ fontSize: fontSize ? `${fontSize * 0.9}px` : undefined }}>[{question.marks}]</span>
-      </div>
-
-      {/* Main Question Content */}
-      <div className="ml-6 space-y-2">
-        {question.blocks.map((block) => (
-          <BlockRenderer key={block.id} block={block} fontSize={fontSize} />
-        ))}
-      </div>
+      {/* Question row: number and content side-by-side for non-creative */}
+      {question.type !== 'creative' ? (
+        <div className="question-row" style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+          <div className="question-number" style={{ flex: '0 0 32px', fontWeight: 600, fontSize: fontSize ? `${fontSize * 1.1}px` : undefined }}>{question.number}।</div>
+          <div className="question-content" style={{ flex: 1 }}>
+            {question.optional && (
+              <div className="text-xs text-slate-500 mb-1" style={{ fontSize: fontSize ? `${fontSize * 0.65}px` : undefined }}>(ঐচ্ছিক)</div>
+            )}
+            {question.blocks.map((block) => (
+              <BlockRenderer key={block.id} block={block} fontSize={fontSize} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Creative Sub-questions */}
+          <div className="ml-6 space-y-2">
+            {question.blocks.map((block) => (
+              <BlockRenderer key={block.id} block={block} fontSize={fontSize} />
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Creative Sub-questions */}
       {question.type === 'creative' && question.subQuestions && (
@@ -49,7 +58,6 @@ export function QuestionRenderer({ question, showAnswerSpace = true, fontSize, m
             <div key={subQ.id} className="sub-question space-y-2">
               <div className="flex items-baseline gap-2">
                 <span className="font-medium" style={{ fontSize: fontSize ? `${fontSize * 0.95}px` : undefined }}>{subQ.label})</span>
-                <span className="ml-auto text-sm text-slate-600" style={{ fontSize: fontSize ? `${fontSize * 0.9}px` : undefined }}>[{subQ.marks}]</span>
               </div>
               <div className="ml-4 space-y-2">
                 {subQ.blocks.map((block) => (
@@ -65,6 +73,48 @@ export function QuestionRenderer({ question, showAnswerSpace = true, fontSize, m
           ))}
         </div>
       )}
+      {/* MCQ Options */}
+      {question.type === 'mcq' && question.options && (() => {
+        const mcqLabels = ['ক', 'খ', 'গ', 'ঘ'];
+        const effectiveFormat = question.mcqFormat || mcqFormat;
+        if (effectiveFormat === 'answer-key') {
+          return (
+            <div className="ml-6 mt-4">
+              <div className="space-y-1">
+                <span className="font-semibold text-sm text-green-700 font-['Noto_Sans_Bengali']">
+                  ✓ উত্তর: {mcqLabels[question.correctAnswer as number]}
+                </span>
+              </div>
+            </div>
+          );
+        } else if (effectiveFormat === 'two-column') {
+          return (
+            <div className="ml-6 mt-4">
+              <div className="grid grid-cols-2 gap-3">
+                {question.options.map((option, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <span className="font-medium min-w-fit font-['Noto_Sans_Bengali']">{mcqLabels[idx]})</span>
+                    <span style={{ fontSize: fontSize ? `${fontSize}px` : undefined }} className="font-['Noto_Sans_Bengali']">{option}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        } else {
+          return (
+            <div className="ml-6 mt-4">
+              <div className="space-y-2">
+                {question.options.map((option, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <span className="font-medium min-w-fit font-['Noto_Sans_Bengali']">{mcqLabels[idx]})</span>
+                    <span style={{ fontSize: fontSize ? `${fontSize}px` : undefined }} className="font-['Noto_Sans_Bengali']">{option}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+      })()}
 
       {/* Answer Space for non-creative questions */}
       {showAnswerSpace && question.type !== 'creative' && question.type !== 'mcq' && (
