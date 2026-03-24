@@ -30,8 +30,8 @@ import {
 } from '../components/ui/dropdown-menu';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { QuestionPaper } from '../types';
-import { deletePaper, duplicatePaper, loadPapers } from '../utils/storage';
 import { getClassBangla, getExamTypeBangla } from '../utils/helpers';
+import { deletePaper, duplicatePaper, loadPapers } from '../utils/storage';
 
 export default function Dashboard() {
   const [papers, setPapers] = useState<QuestionPaper[]>([]);
@@ -92,13 +92,31 @@ export default function Dashboard() {
   const handleLogout = async () => {
     try {
       const { supabase } = await import('../utils/supabaseClient');
+      
+      // Get stored session token and email
+      const sessionToken = localStorage.getItem('sessionToken');
+      const userEmail = localStorage.getItem('userEmail');
+      
+      // Deactivate session in database
+      if (sessionToken && userEmail) {
+        await supabase
+          .from('user_sessions')
+          .update({ is_active: false })
+          .eq('user_email', userEmail)
+          .eq('session_token', sessionToken);
+      }
+      
+      // Clear local session storage
+      localStorage.removeItem('sessionToken');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userName');
+      
+      // Sign out from Supabase
       await supabase.auth.signOut();
     } catch (e) {
-      console.warn('Supabase signOut failed (non-blocking):', e);
+      console.warn('Logout error:', e);
     }
 
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userName');
     navigate('/login');
     toast.info('Logged out successfully');
   };

@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router';
-import { toast } from 'sonner';
 import { Loader2, Lock, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import {
   Card,
   CardContent,
@@ -11,7 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from '../components/ui/card';
+import { Input } from '../components/ui/input';
 import { supabase } from '../utils/supabaseClient';
+
+// Generate a unique session token
+const generateSessionToken = () => {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}-${Math.random().toString(36).substring(2, 15)}`;
+};
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -20,6 +25,35 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || '/';
+
+  const createSession = async (email: string, token: string) => {
+    try {
+      // First deactivate old sessions
+      await supabase
+        .from('user_sessions')
+        .update({ is_active: false })
+        .eq('user_email', email)
+        .eq('is_active', true);
+
+      // Then insert new session
+      const deviceInfo = navigator.userAgent.substring(0, 255);
+      
+      const { error } = await supabase
+        .from('user_sessions')
+        .insert({
+          user_email: email,
+          session_token: token,
+          device_info: deviceInfo,
+          is_active: true
+        });
+
+      if (error) {
+        console.warn('Session creation warning:', error);
+      }
+    } catch (err) {
+      console.error('Session creation error:', err);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +65,7 @@ export default function Login() {
         return;
       }
 
+      // Perform Supabase authentication
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -41,7 +76,14 @@ export default function Login() {
         return;
       }
 
+      // Generate session token and create session in database
+      const sessionToken = generateSessionToken();
+      await createSession(email, sessionToken);
+
+      // Store session info
       localStorage.setItem('userEmail', email);
+      localStorage.setItem('sessionToken', sessionToken);
+      
       toast.success('Successfully logged in');
       navigate(from, { replace: true });
     } catch (err: any) {
@@ -123,7 +165,7 @@ export default function Login() {
             </Button>
 
             <p className="text-xs text-center text-gray-500 mt-6 px-4 leading-relaxed">
-              Restricted access for registered teachers only. Ask your administrator if you don&apos;t have an account.
+              Restricted access for registered teachers only. Ask your administrator if you don't have an account.
             </p>
           </form>
         </CardContent>

@@ -1,14 +1,14 @@
 import {
-    ArrowLeft,
-    BookOpen,
-    Copy,
-    Eye,
-    FileText,
-    Plus,
-    Save,
-    Trash2,
+  ArrowLeft,
+  BookOpen,
+  Copy,
+  Eye,
+  FileText,
+  Plus,
+  Save,
+  Trash2,
 } from 'lucide-react';
-import { useEffect, useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { BlockEditor } from '../components/BlockEditor';
@@ -20,34 +20,34 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { ScrollArea } from '../components/ui/scroll-area';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { usePaper } from '../hooks/usePaper';
-import { Question, QuestionPaper, QuestionType, SubQuestion } from '../types';
-import { generateId, loadPapers, savePaper } from '../utils/storage';
+import { Question, QuestionType, SubQuestion } from '../types';
+import { generateId, savePaper } from '../utils/storage';
 
 const QUESTION_TYPES: { value: QuestionType; label: string; labelEn: string }[] = [
   { value: 'mcq', label: 'বহুনির্বাচনী', labelEn: 'MCQ' },
   { value: 'creative', label: 'সৃজনশীল', labelEn: 'Creative' },
   { value: 'short-question', label: 'সংক্ষিপ্ত প্রশ্ন', labelEn: 'Short Question' },
-  { value: 'fill-in-blanks', label: 'শূন্যস্থান পূরণ', labelEn: 'Fill in Blanks' },
-  { value: 'true-false', label: 'সত্য/মিথ্যা', labelEn: 'True/False' },
-  { value: 'matching', label: 'মিলকরণ', labelEn: 'Matching' },
-  { value: 'explain', label: 'ব্যাখ্যা', labelEn: 'Explain' },
-  { value: 'problem-solving', label: 'সমস্যা সমাধান', labelEn: 'Problem Solving' },
-  { value: 'conversion', label: 'রূপান্তর', labelEn: 'Conversion' },
-  { value: 'pattern', label: 'প্যাটার্ন', labelEn: 'Pattern' },
-  { value: 'diagram', label: 'চিত্র ভিত্তিক', labelEn: 'Diagram Based' },
-  { value: 'construction', label: 'অঙ্কন', labelEn: 'Construction' },
-  { value: 'table-based', label: 'টেবিল ভিত্তিক', labelEn: 'Table Based' },
-  { value: 'graph-based', label: 'গ্রাফ ভিত্তিক', labelEn: 'Graph Based' },
-  { value: 'proof', label: 'প্রমাণ', labelEn: 'Proof' },
+  // { value: 'fill-in-blanks', label: 'শূন্যস্থান পূরণ', labelEn: 'Fill in Blanks' },
+  // { value: 'true-false', label: 'সত্য/মিথ্যা', labelEn: 'True/False' },
+  // { value: 'matching', label: 'মিলকরণ', labelEn: 'Matching' },
+  // { value: 'explain', label: 'ব্যাখ্যা', labelEn: 'Explain' },
+  // { value: 'problem-solving', label: 'সমস্যা সমাধান', labelEn: 'Problem Solving' },
+  // { value: 'conversion', label: 'রূপান্তর', labelEn: 'Conversion' },
+  // { value: 'pattern', label: 'প্যাটার্ন', labelEn: 'Pattern' },
+  // { value: 'diagram', label: 'চিত্র ভিত্তিক', labelEn: 'Diagram Based' },
+  // { value: 'construction', label: 'অঙ্কন', labelEn: 'Construction' },
+  // { value: 'table-based', label: 'টেবিল ভিত্তিক', labelEn: 'Table Based' },
+  // { value: 'graph-based', label: 'গ্রাফ ভিত্তিক', labelEn: 'Graph Based' },
+  // { value: 'proof', label: 'প্রমাণ', labelEn: 'Proof' },
 ];
 
 export default function QuestionBuilder() {
