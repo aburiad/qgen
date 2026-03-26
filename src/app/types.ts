@@ -52,6 +52,7 @@ export interface Question {
   options?: string[]; // For MCQ
   correctAnswer?: string | number; // For MCQ, matching, etc.
   mcqFormat?: 'vertical' | 'two-column' | 'answer-key'; // Per-question MCQ layout
+  mcqLabelType?: 'bangla' | 'english' | 'roman'; // Per-question MCQ label type
 }
 
 export type ExamType = 'class-test' | 'half-yearly' | 'annual' | 'model-test';

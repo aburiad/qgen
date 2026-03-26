@@ -258,6 +258,18 @@
   .board-two-columns {
     display: grid !important;
   }
+
+  /* MCQ Default: Two columns with gap */
+  .board-mcq > div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  /* MCQ Vertical mode: Single column */
+  .mcq-vertical > div {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* Question Item Styling - No background or border */

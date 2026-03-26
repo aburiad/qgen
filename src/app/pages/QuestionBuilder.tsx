@@ -4,9 +4,11 @@ import {
   Copy,
   Eye,
   FileText,
+  Image,
+  Loader2,
   Plus,
   Save,
-  Trash2,
+  Trash2
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -16,6 +18,13 @@ import { MobileHeader } from '../components/mobile/MobileHeader';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { ScrollArea } from '../components/ui/scroll-area';
@@ -26,10 +35,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
-import { Switch } from '../components/ui/switch';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { usePaper } from '../hooks/usePaper';
 import { Question, QuestionType, SubQuestion } from '../types';
+import { extractQuestionFromImage, extractQuestionWithTesseract, mapFieldsToQuestion, type QuestionFieldType } from '../utils/aiQuestionParser';
 import { generateId, savePaper } from '../utils/storage';
 
 const QUESTION_TYPES: { value: QuestionType; label: string; labelEn: string }[] = [
@@ -58,6 +67,13 @@ export default function QuestionBuilder() {
   const isMobile = useIsMobile();
   const editorRef = useRef<HTMLDivElement>(null);
 
+  // AI Image Upload State
+  const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [extractedData, setExtractedData] = useState<Record<string, string> | null>(null);
+
   const createNewQuestion = () => {
     const newQuestion: Question = {
       id: generateId(),
@@ -79,6 +95,78 @@ export default function QuestionBuilder() {
     }
   };
 
+  // AI Image Upload Handlers
+  const handleImageSelect = (file: File) => {
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      setExtractedData(null);
+    }
+  };
+
+  const handleExtractQuestion = async () => {
+    if (!selectedImage || !selectedQuestion) return;
+
+    setIsProcessing(true);
+    try {
+      const questionType = selectedQuestion.type as QuestionFieldType;
+      
+      // Try Gemini API first for intelligent parsing
+      let data;
+      try {
+        setIsProcessing(true);
+        data = await extractQuestionFromImage(selectedImage, questionType);
+        toast.success('AI প্রশ্ন পড়ে ফিল্ড পূরণ করেছে!');
+      } catch (geminiError) {
+        // Fallback to Tesseract if Gemini fails
+        console.log('Gemini failed, using Tesseract fallback:', geminiError);
+        toast.warning('AI এরর - Tesseract ব্যবহার করছি...');
+        data = await extractQuestionWithTesseract(selectedImage, questionType, (progress) => {
+          console.log('OCR Progress:', progress);
+        });
+      }
+      setExtractedData(data);
+      toast.success('প্রশ্ন উদ্ধার সম্পন্ন');
+    } catch (error: any) {
+      toast.error(error.message || 'OCR ত্রুটি। আবার চেষ্টা করুন।');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleApplyExtractedData = () => {
+    if (!extractedData || !selectedQuestion) return;
+
+    const questionType = selectedQuestion.type as QuestionFieldType;
+    const mappedData = mapFieldsToQuestion(extractedData, questionType);
+
+    setSelectedQuestion({
+      ...selectedQuestion,
+      blocks: mappedData.blocks || [],
+      options: mappedData.options,
+      correctAnswer: mappedData.correctAnswer,
+      subQuestions: mappedData.subQuestions,
+    });
+
+    setIsAiDialogOpen(false);
+    setSelectedImage(null);
+    setImagePreview(null);
+    setExtractedData(null);
+    toast.success('প্রশ্ন আপডেট হয়েছে');
+  };
+
+  const openAiDialog = () => {
+    if (!selectedQuestion) {
+      toast.error('প্রথমে একটি প্রশ্ন তৈরি বা নির্বাচন করুন');
+      return;
+    }
+    setIsAiDialogOpen(true);
+  };
+
   const saveQuestion = async () => {
     if (!paper || !selectedQuestion) return;
 
@@ -90,14 +178,7 @@ export default function QuestionBuilder() {
     // MCQ validation
     if (selectedQuestion.type === 'mcq') {
       const options = selectedQuestion.options || ['', '', '', ''];
-      if (options.some(opt => !opt.trim())) {
-        toast.error('সকল ৪টি বিকল্প পূরণ করুন');
-        return;
-      }
-      if (selectedQuestion.correctAnswer === undefined || selectedQuestion.correctAnswer === null) {
-        toast.error('সঠিক উত্তর নির্বাচন করুন');
-        return;
-      }
+      // Allow saving MCQ without requiring all options or correct answer
     }
 
     let updatedQuestions = [...paper.questions];
@@ -407,6 +488,20 @@ export default function QuestionBuilder() {
                                   mcqFormat: prev.mcqFormat || 'vertical',
                                 } as any;
                               }
+                              if (nextType === 'creative') {
+                                // Auto-add 4 sub-questions for creative type
+                                const defaultSubQuestions: SubQuestion[] = [
+                                  { id: generateId(), label: 'ক', blocks: [], marks: 2 },
+                                  { id: generateId(), label: 'খ', blocks: [], marks: 2 },
+                                  { id: generateId(), label: 'গ', blocks: [], marks: 2 },
+                                  { id: generateId(), label: 'ঘ', blocks: [], marks: 2 },
+                                ];
+                                return {
+                                  ...prev,
+                                  type: nextType,
+                                  subQuestions: defaultSubQuestions,
+                                } as any;
+                              }
                               return { ...prev, type: nextType } as any;
                             })
                           }
@@ -423,6 +518,30 @@ export default function QuestionBuilder() {
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {/* Extracted Text Area - Shows after AI/OCR */}
+                      {extractedData && (
+                        <div className="space-y-2">
+                          <Label className="font-['Noto_Sans_Bengali']">
+                            📋 AI থেকে উদ্ধারিত টেক্সট (কপি করে নিচে পেস্ট করুন):
+                          </Label>
+                          <textarea
+                            className="w-full h-32 p-3 text-sm border-2 border-blue-200 rounded-lg bg-blue-50 font-['Noto_Sans_Bengali']"
+                            value={extractedData.uddipok || extractedData.question || ''}
+                            onChange={(e) => {
+                              setExtractedData({
+                                ...extractedData,
+                                uddipok: e.target.value,
+                                question: e.target.value,
+                              });
+                            }}
+                            placeholder="এখানে উদ্ধারিত টেক্সট দেখুন..."
+                          />
+                          <p className="text-xs text-gray-500 font-['Noto_Sans_Bengali']">
+                            উপরের টেক্সট কপি করে নিচে uddipok, ক, খ, গ, ঘ ফিল্ডে পেস্ট করুন।
+                          </p>
+                        </div>
+                      )}
 
                       {/* Marks and Optional */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -444,100 +563,85 @@ export default function QuestionBuilder() {
                             />
                           </div>
                         )}
-
-                        <div className="space-y-2">
-                          <Label className="font-['Noto_Sans_Bengali']">ঐচ্ছিক প্রশ্ন</Label>
-                          <div className="flex items-center h-12 md:h-10">
-                            <Switch
-                              checked={selectedQuestion.optional}
-                              onCheckedChange={(checked) =>
-                                setSelectedQuestion({ ...selectedQuestion, optional: checked })
-                              }
-                            />
-                            <span className="ml-2 text-sm text-slate-600">
-                              {selectedQuestion.optional ? 'হ্যাঁ' : 'না'}
-                            </span>
-                          </div>
-                        </div>
                       </div>
 
                       {/* MCQ Options */}
                       {selectedQuestion.type === 'mcq' && (
                         <div className="space-y-4 p-4 bg-purple-50 rounded-xl border border-purple-200">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
                             <h3 className="font-medium text-sm font-['Noto_Sans_Bengali']">বহুনির্বাচনী বিকল্প</h3>
-                            <div className="w-48">
-                              <Label className="mb-1 text-xs">ফরম্যাট</Label>
-                              <Select
-                                value={selectedQuestion.mcqFormat || 'vertical'}
-                                onValueChange={(val) => setSelectedQuestion({ ...selectedQuestion, mcqFormat: val as any })}
-                              >
-                                <SelectTrigger className="w-full h-9">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="vertical">উপর-নিচে (Vertical)</SelectItem>
-                                  <SelectItem value="two-column">দুই কলাম (Two-column)</SelectItem>
-                                  <SelectItem value="answer-key">উত্তর চাবি (Answer Key)</SelectItem>
-                                </SelectContent>
-                              </Select>
+                            <div className="flex gap-2">
+                              <div className="w-36">
+                                <Label className="mb-1 text-xs">লেবেল</Label>
+                                <Select
+                                  value={selectedQuestion.mcqLabelType || 'bangla'}
+                                  onValueChange={(val) => setSelectedQuestion({ ...selectedQuestion, mcqLabelType: val as any })}
+                                >
+                                  <SelectTrigger className="w-full h-9">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="bangla">বাংলা (ক,খ,গ,ঘ)</SelectItem>
+                                    <SelectItem value="english">English (A,B,C,D)</SelectItem>
+                                    <SelectItem value="roman">Roman (i,ii,iii,iv)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="w-36">
+                                <Label className="mb-1 text-xs">ফরম্যাট</Label>
+                                <Select
+                                  value={selectedQuestion.mcqFormat || 'vertical'}
+                                  onValueChange={(val) => setSelectedQuestion({ ...selectedQuestion, mcqFormat: val as any })}
+                                >
+                                  <SelectTrigger className="w-full h-9">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="vertical">উপর-নিচে</SelectItem>
+                                    <SelectItem value="two-column">দুই কলাম</SelectItem>
+                                    <SelectItem value="answer-key">উত্তর চাবি</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
                           </div>
                           
-                          {['ক', 'খ', 'গ', 'ঘ'].map((label, idx) => (
-                            <div key={idx} className="p-3 bg-white rounded-xl border border-purple-200">
-                              <div className="flex items-start justify-between mb-3 gap-3">
-                                <div className="flex items-center gap-3 flex-1">
-                                  <input
-                                    type="radio"
-                                    id={`correct-${idx}`}
-                                    name="correctAnswer"
-                                    checked={selectedQuestion.correctAnswer === idx}
-                                    onChange={() =>
-                                      setSelectedQuestion({
-                                        ...selectedQuestion,
-                                        correctAnswer: idx,
-                                      })
-                                    }
-                                    className="w-4 h-4 cursor-pointer accent-green-600"
-                                  />
-                                  <label htmlFor={`correct-${idx}`} className="flex items-center gap-2 cursor-pointer flex-1">
-                                    <Badge className="font-['Noto_Sans_Bengali']">{label})</Badge>
-                                    <span className="text-xs text-slate-500 font-['Noto_Sans_Bengali']">
-                                      {selectedQuestion.correctAnswer === idx ? '✓ সঠিক উত্তর' : 'সঠিক করতে ক্লিক করুন'}
-                                    </span>
-                                  </label>
+                          {(() => {
+                            const labelType = selectedQuestion.mcqLabelType || 'bangla';
+                            const labels = labelType === 'bangla' ? ['ক', 'খ', 'গ', 'ঘ'] 
+                              : labelType === 'english' ? ['A', 'B', 'C', 'D'] 
+                              : ['i', 'ii', 'iii', 'iv'];
+                            return labels.map((label, idx) => (
+                              <div key={idx} className="p-3 bg-white rounded-xl border border-purple-200">
+                                <div className="flex items-start justify-between mb-3 gap-3">
+                                  <div className="flex items-center gap-3 flex-1">
+                                    <Badge className="font-['Noto_Sans_Bengali']">{label}</Badge>
+                                  </div>
                                 </div>
+                                
+                                <Input
+                                  placeholder={`বিকল্প ${label}`}
+                                  value={selectedQuestion.options?.[idx] || ''}
+                                  onChange={(e) => {
+                                    const newOptions = [...(selectedQuestion.options || ['', '', '', ''])];
+                                    newOptions[idx] = e.target.value;
+                                    setSelectedQuestion({
+                                      ...selectedQuestion,
+                                      options: newOptions,
+                                    });
+                                  }}
+                                  className="w-full h-11 md:h-9 font-['Noto_Sans_Bengali']"
+                                />
                               </div>
-                              
-                              <Input
-                                placeholder={`বিকল্প ${label}ের টেক্সট`}
-                                value={selectedQuestion.options?.[idx] || ''}
-                                onChange={(e) => {
-                                  const newOptions = [...(selectedQuestion.options || ['', '', '', ''])];
-                                  newOptions[idx] = e.target.value;
-                                  setSelectedQuestion({
-                                    ...selectedQuestion,
-                                    options: newOptions,
-                                  });
-                                }}
-                                className="w-full h-11 md:h-9 font-['Noto_Sans_Bengali']"
-                              />
-                            </div>
-                          ))}
+                            ));
+                          })()}
                         </div>
                       )}
 
                       {/* Creative Question Sub-parts */}
                       {selectedQuestion.type === 'creative' && (
                         <div className="space-y-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <h3 className="font-medium text-sm font-['Noto_Sans_Bengali']">সৃজনশীল উপপ্রশ্ন</h3>
-                            <Button size="sm" variant="outline" onClick={addSubQuestion} className="touch-manipulation font-['Noto_Sans_Bengali']">
-                              <Plus className="w-3.5 h-3.5 mr-1" />
-                              উপপ্রশ্ন যোগ করুন
-                            </Button>
-                          </div>
+                          <h3 className="font-medium text-sm font-['Noto_Sans_Bengali']">সৃজনশীল উপপ্রশ্ন</h3>
 
                           {selectedQuestion.subQuestions?.map((subQ, idx) => (
                             <div key={subQ.id} className="p-3 bg-white rounded-xl border border-blue-200">
@@ -587,6 +691,24 @@ export default function QuestionBuilder() {
                           blocks={selectedQuestion.blocks}
                           onChange={(blocks) => setSelectedQuestion({ ...selectedQuestion, blocks })}
                         />
+                      </div>
+
+                      {/* AI Image Upload Button */}
+                      <div className="pt-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            if (!selectedQuestion) {
+                              toast.error('প্রথমে একটি প্রশ্ন তৈরি বা নির্বাচন করুন');
+                              return;
+                            }
+                            setIsAiDialogOpen(true);
+                          }}
+                          className="w-full h-10 border-dashed border-2 font-['Noto_Sans_Bengali']"
+                        >
+                          <Image className="w-4 h-4 mr-2" />
+                          📷 AI দিয়ে ছবি থেকে প্রশ্ন তৈরি করুন
+                        </Button>
                       </div>
 
                       {/* Save Button */}
@@ -644,6 +766,192 @@ export default function QuestionBuilder() {
           </div>
         </div>
       </div>
+
+      {/* AI Image Upload Dialog */}
+      <Dialog open={isAiDialogOpen} onOpenChange={setIsAiDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-['Noto_Sans_Bengali']">📷 ছবি থেকে প্রশ্ন তৈরি</DialogTitle>
+            <DialogDescription className="font-['Noto_Sans_Bengali']">
+              একটি ছবি আপলোড করুন। AI প্রশ্নটি পড়ে আপনার জন্য ফিল্ডগুলো পূরণ করবে।
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Image Upload Area */}
+            {!imagePreview ? (
+              <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageSelect(file);
+                  }}
+                  className="hidden"
+                  id="ai-image-upload"
+                />
+                <label
+                  htmlFor="ai-image-upload"
+                  className="cursor-pointer flex flex-col items-center"
+                >
+                  <Image className="w-12 h-12 text-slate-400 mb-2" />
+                  <p className="text-sm text-slate-600 font-['Noto_Sans_Bengali']">
+                    ছবি আপলোড করতে এখানে ক্লিক করুন
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    (JPG, PNG - হস্তলিখিত বা মুদ্রিত)
+                  </p>
+                </label>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Image Preview */}
+                <div className="relative rounded-lg overflow-hidden border">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-48 object-contain bg-slate-100"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 bg-white/80"
+                    onClick={() => {
+                      setSelectedImage(null);
+                      setImagePreview(null);
+                      setExtractedData(null);
+                    }}
+                  >
+                    ✕
+                  </Button>
+                </div>
+
+                {/* Process Button */}
+                {!extractedData ? (
+                  <Button
+                    onClick={handleExtractQuestion}
+                    disabled={isProcessing}
+                    className="w-full font-['Noto_Sans_Bengali']"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        AI প্রশ্ন পড়ছে...
+                      </>
+                    ) : (
+                      <>
+                        🔍 প্রশ্ন উদ্ধার করুন
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Extracted Text as Textarea - User can copy */}
+                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <p className="text-sm font-medium text-green-800 mb-2 font-['Noto_Sans_Bengali']">
+                        ✓ উদ্ধারিত টেক্সট (কপি করে নিচের ফিল্ডে পেস্ট করুন):
+                      </p>
+                      <textarea
+                        className="w-full h-40 p-2 text-sm border rounded font-['Noto_Sans_Bengali']"
+                        value={extractedData.uddipok || extractedData.question || ''}
+                        onChange={(e) => {
+                          // Update the extracted data with edited text
+                          setExtractedData({
+                            ...extractedData,
+                            uddipok: e.target.value,
+                            question: e.target.value,
+                          });
+                        }}
+                        placeholder="এখানে উদ্ধারিত টেক্সট দেখুন..."
+                      />
+                      <p className="text-xs text-gray-500 mt-2 font-['Noto_Sans_Bengali']">
+                        উপরের টেক্সট কপি করে নিচে ম্যানুয়ালি পেস্ট করুন।
+                      </p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedImage(null);
+                          setImagePreview(null);
+                          setExtractedData(null);
+                        }}
+                        className="flex-1 font-['Noto_Sans_Bengali']"
+                      >
+                        আরেকটি ছবি
+                      </Button>
+                      <Button
+                        onClick={handleApplyExtractedData}
+                        className="flex-1 bg-green-600 hover:bg-green-700 font-['Noto_Sans_Bengali']"
+                      >
+                        ✓ প্রয়োগ করুন
+                      </Button>
+                    </div>
+
+                    {/* Direct Save Button - Add to paper directly */}
+                    <Button
+                      onClick={async () => {
+                        if (!extractedData || !paper) return;
+                        
+                        // Check if extracted data has creative question fields
+                        const hasUddipok = extractedData.uddipok && extractedData.uddipok.length > 0;
+                        const hasSubQuestions = extractedData.ka || extractedData.kha || extractedData.ga || extractedData.gha;
+                        
+                        // If has creative fields, force creative type; otherwise use selected or default
+                        let questionType: QuestionFieldType;
+                        if (hasUddipok || hasSubQuestions) {
+                          questionType = 'creative';
+                        } else {
+                          questionType = (selectedQuestion?.type as QuestionFieldType) || 'creative';
+                        }
+                        
+                        const mappedData = mapFieldsToQuestion(extractedData, questionType);
+                        
+                        // Create new question with extracted data
+                        const newQuestion: Question = {
+                          id: generateId(),
+                          type: questionType,
+                          number: paper.questions.length + 1,
+                          blocks: mappedData.blocks || [],
+                          marks: 5,
+                          optional: false,
+                          subQuestions: mappedData.subQuestions,
+                          options: mappedData.options,
+                          correctAnswer: mappedData.correctAnswer,
+                        };
+                        
+                        // Add to paper
+                        const updatedPaper = {
+                          ...paper,
+                          questions: [...paper.questions, newQuestion],
+                          updatedAt: new Date().toISOString(),
+                        };
+                        
+                        await savePaper(updatedPaper);
+                        setPaper(updatedPaper);
+                        
+                        // Reset dialog
+                        setIsAiDialogOpen(false);
+                        setSelectedImage(null);
+                        setImagePreview(null);
+                        setExtractedData(null);
+                        
+                        toast.success('প্রশ্ন সরাসরি যোগ হয়েছে!');
+                      }}
+                      className="w-full mt-2 bg-blue-600 hover:bg-blue-700 font-['Noto_Sans_Bengali']"
+                    >
+                      ➕ সরাসরি কাগজে যোগ করুন
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

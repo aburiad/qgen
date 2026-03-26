@@ -75,8 +75,12 @@ export function QuestionRenderer({ question, showAnswerSpace = true, fontSize, m
       )}
       {/* MCQ Options */}
       {question.type === 'mcq' && question.options && (() => {
-        const mcqLabels = ['ক', 'খ', 'গ', 'ঘ'];
-        const effectiveFormat = question.mcqFormat || mcqFormat;
+        const labelType = question.mcqLabelType || 'bangla';
+        const mcqLabels = labelType === 'bangla' ? ['ক', 'খ', 'গ', 'ঘ'] 
+          : labelType === 'english' ? ['A', 'B', 'C', 'D'] 
+          : ['i', 'ii', 'iii', 'iv'];
+        // Use preview's mcqFormat setting, or fall back to question's setting
+        const effectiveFormat = mcqFormat || question.mcqFormat;
         if (effectiveFormat === 'answer-key') {
           return (
             <div className="ml-6 mt-4">
@@ -90,7 +94,7 @@ export function QuestionRenderer({ question, showAnswerSpace = true, fontSize, m
         } else if (effectiveFormat === 'two-column') {
           return (
             <div className="ml-6 mt-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="board-mcq">
                 {question.options.map((option, idx) => (
                   <div key={idx} className="flex gap-2">
                     <span className="font-medium min-w-fit font-['Noto_Sans_Bengali']">{mcqLabels[idx]})</span>
@@ -103,7 +107,7 @@ export function QuestionRenderer({ question, showAnswerSpace = true, fontSize, m
         } else {
           return (
             <div className="ml-6 mt-4">
-              <div className="space-y-2">
+              <div className="mcq-vertical">
                 {question.options.map((option, idx) => (
                   <div key={idx} className="flex gap-2">
                     <span className="font-medium min-w-fit font-['Noto_Sans_Bengali']">{mcqLabels[idx]})</span>

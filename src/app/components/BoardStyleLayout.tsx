@@ -250,16 +250,20 @@ function BoardQuestion({ question, fontSize, mcqFormat }: { question: Question; 
 function BoardQuestionInner({ question, fontSize, mcqFormat }: { question: Question; fontSize?: number; mcqFormat?: 'vertical' | 'two-column' | 'answer-key' }) {
   const isCreative = question.type === 'creative';
 
-  // Helper labels
-  const mcqLabels = ['ক', 'খ', 'গ', 'ঘ'];
-  const effectiveFormat = question.mcqFormat || mcqFormat;
+  // Helper labels - use question's label type or default to bangla
+  const labelType = question.mcqLabelType || 'bangla';
+  const mcqLabels = labelType === 'bangla' ? ['ক', 'খ', 'গ', 'ঘ'] 
+    : labelType === 'english' ? ['A', 'B', 'C', 'D'] 
+    : ['i', 'ii', 'iii', 'iv'];
+  // Use preview's mcqFormat setting, or fall back to question's setting
+  const effectiveFormat = mcqFormat || question.mcqFormat;
 
   return (
     <div className={`board-question ${isCreative ? 'creative-question' : ''}`} style={{ fontSize: fontSize ? `${fontSize}px` : undefined }}>
       {/* Non-creative: Question Number and Content side-by-side */}
       {!isCreative && (
         <div className="board-question-row" style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-          <div className="board-question-number" style={{ flex: '0 0 32px' }}>{question.number}।</div>
+          <div className="board-question-number" style={{ flex: '0 0 10px' }}>{question.number}।</div>
           <div className="board-question-content" style={{ flex: 1 }}>
             {question.blocks.map((block) => (
               <BoardBlock key={block.id} block={block} fontSize={fontSize} />
@@ -286,7 +290,7 @@ function BoardQuestionInner({ question, fontSize, mcqFormat }: { question: Quest
           {effectiveFormat === 'answer-key' ? (
             <div className="text-sm text-green-700">✓ উত্তর: {mcqLabels[question.correctAnswer as number]}</div>
           ) : effectiveFormat === 'two-column' ? (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="board-mcq">
               {question.options.map((opt, idx) => (
                 <div key={idx} className="flex gap-2 items-start">
                   <span className="font-medium">{mcqLabels[idx]})</span>
@@ -295,7 +299,7 @@ function BoardQuestionInner({ question, fontSize, mcqFormat }: { question: Quest
               ))}
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="mcq-vertical">
               {question.options.map((opt, idx) => (
                 <div key={idx} className="flex gap-2 items-start">
                   <span className="font-medium">{mcqLabels[idx]})</span>
