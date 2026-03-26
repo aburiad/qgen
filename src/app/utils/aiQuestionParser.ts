@@ -7,9 +7,9 @@ import Tesseract from 'tesseract.js';
 import type { Question, QuestionType, SubQuestion } from '../types';
 import { generateId } from './storage';
 
-// Grok AI API (xAI)
-const GROK_API_KEY = 'xai-SPEbpVNoeNX6DwJDGwB2ZIkXElCuXcnHM8onpXjbtyTbTB7w2LQFRfBtr99u1svHP4d8vUkhCWIUQxoX';
-const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
+// Grok AI API (xAI) - from environment variables
+const GROK_API_KEY = import.meta.env.VITE_GROK_API_KEY || '';
+const GROK_API_URL = import.meta.env.VITE_GROK_API_URL || 'https://api.x.ai/v1/chat/completions';
 
 /**
  * Field definitions for different question types
