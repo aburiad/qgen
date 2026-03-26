@@ -9,7 +9,7 @@ import { generateId } from './storage';
 
 // Grok AI API (xAI) - from environment variables
 const GROK_API_KEY = import.meta.env.VITE_GROK_API_KEY || '';
-const GROK_API_URL = import.meta.env.VITE_GROK_API_URL || 'https://api.x.ai/v1/chat/completions';
+const GROK_API_URL = import.meta.env.VITE_GROK_API_URL || '';
 
 /**
  * Field definitions for different question types
