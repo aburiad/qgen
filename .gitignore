@@ -3,4 +3,5 @@ build/
 dist/
 .env
 .env.local
+.vite-env.ts
 .DS_Store
