@@ -1,10 +1,11 @@
+import { HelpCircle } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from './ui/popover';
-import { HelpCircle } from 'lucide-react';
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from './ui/dialog';
 import { ScrollArea } from './ui/scroll-area';
 
 interface MathSymbol {
@@ -42,16 +43,25 @@ interface MathSymbolHelperProps {
 }
 
 export function MathSymbolHelper({ onInsert }: MathSymbolHelperProps) {
+  const [open, setOpen] = useState(false);
+
+  const handleInsert = (latex: string) => {
+    onInsert(latex);
+    setOpen(false);
+  };
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button variant="outline" size="sm" type="button">
           <HelpCircle className="w-4 h-4 mr-2" />
           গণিত চিহ্ন
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-96" align="start">
-        <div className="space-y-3">
+      </DialogTrigger>
+      <DialogContent 
+        className="max-w-md w-[90vw] max-h-[85vh] overflow-hidden flex flex-col"
+      >
+        <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
           <div>
             <h4 className="font-medium text-sm mb-2">সাধারণ গণিত চিহ্ন</h4>
             <p className="text-xs text-slate-500 mb-3">
@@ -59,13 +69,13 @@ export function MathSymbolHelper({ onInsert }: MathSymbolHelperProps) {
             </p>
           </div>
           
-          <ScrollArea className="h-[300px] pr-3">
-            <div className="grid grid-cols-2 gap-2">
+          <ScrollArea className="flex-1 min-h-0 overflow-auto pr-3">
+            <div className="grid grid-cols-2 gap-2 pb-2">
               {MATH_SYMBOLS.map((symbol, idx) => (
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => onInsert(symbol.latex)}
+                  onClick={() => handleInsert(symbol.latex)}
                   className="flex items-center gap-2 p-2 rounded border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors text-left"
                 >
                   <span className="text-lg font-mono">{symbol.symbol}</span>
@@ -82,7 +92,7 @@ export function MathSymbolHelper({ onInsert }: MathSymbolHelperProps) {
             </div>
           </ScrollArea>
 
-          <div className="pt-3 border-t border-slate-200 space-y-2">
+          <div className="pt-3 border-t border-slate-200 space-y-2 shrink-0">
             <h5 className="text-xs font-medium text-slate-700">দ্রুত টিপস:</h5>
             <ul className="text-xs text-slate-600 space-y-1">
               <li>• সাবস্ক্রিপ্ট: x_1 → x₁</li>
@@ -92,7 +102,7 @@ export function MathSymbolHelper({ onInsert }: MathSymbolHelperProps) {
             </ul>
           </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }

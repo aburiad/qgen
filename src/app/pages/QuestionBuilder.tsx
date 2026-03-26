@@ -695,7 +695,7 @@ export default function QuestionBuilder() {
 
                       {/* AI Image Upload Button */}
                       <div className="pt-2">
-                        <Button
+                        <Button disabled
                           variant="outline"
                           onClick={() => {
                             if (!selectedQuestion) {
@@ -706,7 +706,7 @@ export default function QuestionBuilder() {
                           }}
                           className="w-full h-10 border-dashed border-2 font-['Noto_Sans_Bengali']"
                         >
-                          <Image className="w-4 h-4 mr-2" />
+                          <Image className="w-4 h-4 mr-2"/>
                           📷 AI দিয়ে ছবি থেকে প্রশ্ন তৈরি করুন
                         </Button>
                       </div>
