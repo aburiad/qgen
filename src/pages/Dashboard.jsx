@@ -12,19 +12,19 @@
  * - Paper এর details (subject, class, questions count, marks) দেখায়
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 // UI Components
-import { Button } from '../app/components/ui/button';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '../app/components/ui/card';
 import { Badge } from '../app/components/ui/badge';
+import { Button } from '../app/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '../app/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,23 +35,23 @@ import {
 // Icons
 import {
   BookOpen,
-  Plus,
-  FileText,
-  MoreVertical,
-  Eye,
-  Pencil,
-  Copy,
-  Trash2,
-  GraduationCap,
   Clock,
+  Copy,
+  Eye,
+  FileText,
+  GraduationCap,
+  MoreVertical,
+  Pencil,
+  Plus,
   Settings,
+  Trash2,
 } from 'lucide-react';
 
 // Utils & Components
-import { loadPapers, deletePaper, duplicatePaper } from '../utils/storage';
-import { getExamTypeBangla } from '../config/constants';
 import { toast } from 'sonner';
 import { HelpDialog } from '../app/components/HelpDialog';
+import { getExamTypeBangla } from '../config/constants';
+import { deletePaper, duplicatePaper, loadPapers } from '../utils/storage';
 
 /**
  * Dashboard Component
@@ -114,7 +114,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-slate-900">
-                  বাংলাদেশ বোর্ড প্রশ্নপত্র জেনারেটর
+                  প্রশ্নশালা
                 </h1>
                 <p className="text-sm text-slate-500">Question Paper Generator</p>
               </div>

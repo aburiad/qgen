@@ -140,7 +140,7 @@ export default function Dashboard() {
                   <BookOpen className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-semibold text-slate-900">বাংলাদেশ বোর্ড প্রশ্নপত্র জেনারেটর</h1>
+                  <h1 className="text-xl font-semibold text-slate-900">প্রশ্নশালা</h1>
                   <p className="text-sm text-slate-500">Question Paper Generator</p>
                 </div>
               </div>
