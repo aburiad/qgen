@@ -38,7 +38,7 @@ import {
 import { useIsMobile } from '../hooks/useIsMobile';
 import { usePaper } from '../hooks/usePaper';
 import { Question, QuestionType, SubQuestion } from '../types';
-import { extractQuestionFromImage, extractQuestionWithTesseract, mapFieldsToQuestion, type QuestionFieldType } from '../utils/aiQuestionParser';
+import { extractQuestionWithTesseract, mapFieldsToQuestion, type QuestionFieldType } from '../utils/aiQuestionParser';
 import { generateId, savePaper } from '../utils/storage';
 
 const QUESTION_TYPES: { value: QuestionType; label: string; labelEn: string }[] = [
@@ -119,7 +119,7 @@ export default function QuestionBuilder() {
       let data;
       try {
         setIsProcessing(true);
-        data = await extractQuestionFromImage(selectedImage, questionType);
+        data = await extractQuestionWithGemini(selectedImage, questionType);
         toast.success('AI প্রশ্ন পড়ে ফিল্ড পূরণ করেছে!');
       } catch (geminiError) {
         // Fallback to Tesseract if Gemini fails
@@ -695,7 +695,7 @@ export default function QuestionBuilder() {
 
                       {/* AI Image Upload Button */}
                       <div className="pt-2">
-                        <Button disabled
+                        <Button
                           variant="outline"
                           onClick={() => {
                             if (!selectedQuestion) {

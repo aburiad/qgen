@@ -1,15 +1,14 @@
 /**
  * AI Question Parser Service
- * Uses Grok AI Vision OR Tesseract.js for OCR
+ * Uses Gemini AI Vision OR Tesseract.js for OCR
  */
 
 import Tesseract from 'tesseract.js';
 import type { Question, QuestionType, SubQuestion } from '../types';
 import { generateId } from './storage';
 
-// Grok AI API (xAI) - from environment variables
-const GROK_API_KEY = import.meta.env.VITE_GROK_API_KEY || '';
-const GROK_API_URL = import.meta.env.VITE_GROK_API_URL || '';
+// Gemini API (Google AI) - from environment variables
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 /**
  * Field definitions for different question types
@@ -52,9 +51,9 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 /**
- * Build the prompt for Gemini based on question type and fields
+ * Build the prompt for AI based on question type and fields
  */
-function buildPrompt(questionType: string, fields: string[]): string {
+function buildPrompt(questionType: string, fields: readonly string[]): string {
   const fieldList = fields.join(', ');
    
   return `You are an expert at reading and parsing exam questions from images.
@@ -90,7 +89,7 @@ Now analyze the image and return the JSON:`;
 }
 
 /**
- * Parse Gemini response to extract JSON
+ * Parse AI response to extract JSON
  */
 function parseGeminiResponse(responseText: string): Record<string, string> {
   // Try to find JSON in the response
@@ -177,100 +176,63 @@ export async function extractQuestionWithTesseract(
 }
 
 /**
- * Main function to extract question from image using Grok AI
+ * Extract question using Gemini API (Google AI)
  */
-export async function extractQuestionFromImage(
+export async function extractQuestionWithGemini(
   imageFile: File,
   questionType: QuestionFieldType
 ): Promise<Record<string, string>> {
+  if (!GEMINI_API_KEY) {
+    throw new Error('Gemini API key not configured');
+  }
+
   try {
-    // Convert image to base64
     const base64Image = await fileToBase64(imageFile);
-     
-    // Get fields for this question type
     const fields = QUESTION_FIELDS[questionType] || QUESTION_FIELDS['short-question'];
     const fieldList = fields.join(', ');
-    
-    // Build prompt for Grok
-    const systemPrompt = `You are an expert at reading and parsing exam questions from images.
 
-TASK: Analyze the image and extract the question content. Map the extracted text into the provided fields.
+    const prompt = buildPrompt(questionType, fields);
 
-QUESTION TYPE: ${questionType}
-
-FIELDS TO FILL: ${fieldList}
-
-IMPORTANT RULES:
-1. Return ONLY valid JSON - no markdown, no explanation, no extra text
-2. Keys must EXACTLY match the field names provided
-3. If content is missing for a field → return empty string ""
-4. Preserve Bengali and English text as-is (do NOT translate)
-5. For math equations, convert to LaTeX format
-6. Ignore page numbers, headers, footers, and unrelated text
-7. Focus only on the main question content in the image
-
-SPECIFIC FIELD MAPPING:
-- For MCQ: question=main question, option_a/b/c/d=choices, correct_answer=letter (a/b/c/d)
-- For Creative: uddipok=main paragraph/stem, ka/kha/ga/gha=sub-questions
-- For Short Question: question=the question, answer_hint=optional hint
-
-OUTPUT FORMAT:
-{
-  "field1": "extracted text",
-  "field2": "extracted text"
-}`;
-
-    const userMessage = `Analyze this image and extract the question. Return JSON with fields: ${fieldList}`;
-    
-    // Call Grok API (xAI)
     const response = await fetch(
-      GROK_API_URL,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROK_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'grok-vision-beta',
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt
-            },
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: userMessage },
-                { type: 'image_url', image_url: { url: `data:${imageFile.type};base64,${base64Image}` } }
-              ]
-            }
-          ],
-          temperature: 0.1,
-          max_tokens: 2048,
+          contents: [{
+            parts: [
+              { text: prompt },
+              {
+                inline_data: {
+                  mime_type: imageFile.type,
+                  data: base64Image
+                }
+              }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 2048,
+          }
         }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Grok API error:', response.status, errorText);
-      throw new Error(`Grok API error: ${response.status}`);
+      console.error('Gemini API error:', response.status, errorText);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-     
-    if (!data.choices || !data.choices[0]?.message?.content) {
-      console.error('Invalid Grok response:', data);
-      throw new Error('Invalid response from Grok API');
-    }
-
-    const extractedText = data.choices[0].message.content;
-    console.log('Grok extracted:', extractedText);
+    const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    console.log('Gemini extracted:', extractedText);
 
     return parseGeminiResponse(extractedText);
   } catch (error) {
-    console.error('Grok extraction error:', error);
+    console.error('Gemini extraction error:', error);
     throw error;
   }
 }
@@ -358,25 +320,27 @@ export function mapFieldsToQuestion(
 }
 
 /**
- * Fallback: Use Gemini with image for better extraction (if API available)
+ * Main OCR function: Try Gemini first, then Tesseract fallback
  */
 export async function extractQuestionWithAI(
   imageFile: File,
   questionType: QuestionFieldType,
   onProgress?: (progress: number) => void
 ): Promise<Record<string, string>> {
-  // First try Tesseract (free, always works)
+  // First try Gemini (if API key available)
+  if (GEMINI_API_KEY) {
+    try {
+      return await extractQuestionWithGemini(imageFile, questionType);
+    } catch (geminiError) {
+      console.error('Gemini failed, trying Tesseract:', geminiError);
+    }
+  }
+
+  // Fallback to Tesseract (free, always works)
   try {
     return await extractQuestionWithTesseract(imageFile, questionType, onProgress);
   } catch (tesseractError) {
-    console.error('Tesseract failed, trying Gemini:', tesseractError);
-     
-    // Fallback to Gemini if Tesseract fails
-    try {
-      return await extractQuestionFromImage(imageFile, questionType);
-    } catch (geminiError) {
-      console.error('Gemini also failed:', geminiError);
-      throw new Error('Both OCR methods failed. Please try again or use manual entry.');
-    }
+    console.error('Tesseract failed:', tesseractError);
+    throw new Error('OCR failed. Please try again or use manual entry.');
   }
 }
